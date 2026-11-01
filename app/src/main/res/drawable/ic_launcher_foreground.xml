@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Vertical "short" frame with a play mark and a small spark: Shorts Finder icon. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="@color/ic_launcher_accent"
+        android:pathData="M42,30 L66,30 A6,6 0 0 1 72,36 L72,72 A6,6 0 0 1 66,78 L42,78 A6,6 0 0 1 36,72 L36,36 A6,6 0 0 1 42,30 Z" />
+    <path
+        android:fillColor="@color/ic_launcher_background"
+        android:pathData="M48,44 L62,54 L48,64 Z" />
+    <path
+        android:fillColor="#FFFFC857"
+        android:pathData="M76,26 L78,32 L84,34 L78,36 L76,42 L74,36 L68,34 L74,32 Z" />
+</vector>
