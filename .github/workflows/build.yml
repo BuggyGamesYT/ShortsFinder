@@ -33,6 +33,7 @@ jobs:
 
       # Keeps the fallback debug key the same between runs, so fallback builds can update each other.
       # (GitHub drops caches unused for 7 days; after that a new fallback key is made.)
+      # The cache key and the SHORTSFINDER_* secret names stay as they were so updates keep the same signing key.
       - name: Restore fallback debug key
         uses: actions/cache@v4
         with:
@@ -78,20 +79,20 @@ jobs:
         run: |
           set -e
           APK=$(ls app/build/outputs/apk/release/*.apk | head -n 1)
-          cp "$APK" "ShortsFinder-$VER.apk"
-          "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --print-certs "ShortsFinder-$VER.apk"
+          cp "$APK" "YTShortsMaker-$VER.apk"
+          "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --print-certs "YTShortsMaker-$VER.apk"
           rm -f "$RUNNER_TEMP/shortsfinder-release.keystore"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ShortsFinder-${{ env.VER }}
-          path: ShortsFinder-${{ env.VER }}.apk
+          name: YTShortsMaker-${{ env.VER }}
+          path: YTShortsMaker-${{ env.VER }}.apk
 
       - name: Publish release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: ShortsFinder-${{ env.VER }}.apk
+          files: YTShortsMaker-${{ env.VER }}.apk
           generate_release_notes: true
           body: |
-            Shorts Finder ${{ env.VER }}. Signed with the ${{ env.SIGNED_WITH }}.
+            YT Shorts Maker ${{ env.VER }}. Signed with the ${{ env.SIGNED_WITH }}.

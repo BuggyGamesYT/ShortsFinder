@@ -1,10 +1,16 @@
 package com.buggygamesyt.shortsfinder.ui
 
 import android.app.Application
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.buggygamesyt.shortsfinder.data.AppSettings
 import com.buggygamesyt.shortsfinder.data.ChannelTab
+import com.buggygamesyt.shortsfinder.data.ExportFailed
+import com.buggygamesyt.shortsfinder.data.ExportJob
+import com.buggygamesyt.shortsfinder.data.MediaFiles
+import com.buggygamesyt.shortsfinder.data.ShortExporter
+import com.buggygamesyt.shortsfinder.data.SourceStore
 import com.buggygamesyt.shortsfinder.data.HttpException
 import com.buggygamesyt.shortsfinder.data.SettingsStore
 import com.buggygamesyt.shortsfinder.data.Video
@@ -34,6 +40,27 @@ data class ListState(
     val lastUpdated: Long = 0L,
 )
 
+/** What the editor opens with: a YouTube moment (videoId set) or a plain file. */
+data class EditorRequest(
+    val videoId: String?,
+    val title: String,
+    val suggestedStartSec: Int?,
+    val suggestedEndSec: Int?,
+    val pickedUri: Uri? = null,
+)
+
+data class SavedShort(val uri: Uri, val name: String)
+
+data class ExportState(
+    val active: Boolean = false,
+    val running: Boolean = false,
+    val index: Int = 0,
+    val total: Int = 0,
+    val progress: Float = 0f,
+    val saved: List<SavedShort> = emptyList(),
+    val error: String? = null,
+)
+
 sealed interface MomentsState {
     data object Idle : MomentsState
     data class Loading(val step: String) : MomentsState
@@ -58,8 +85,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val _moments = MutableStateFlow<MomentsState>(MomentsState.Idle)
     val moments: StateFlow<MomentsState> = _moments.asStateFlow()
 
+    private val sources = SourceStore(app)
+    private val exporter = ShortExporter(app)
+
+    private val _editor = MutableStateFlow<EditorRequest?>(null)
+    val editor: StateFlow<EditorRequest?> = _editor.asStateFlow()
+
+    private val _export = MutableStateFlow(ExportState())
+    val export: StateFlow<ExportState> = _export.asStateFlow()
+
+    /** Bumped when a source file is picked or forgotten, so screens re-read [sourceFor]. */
+    private val _sourcesVersion = MutableStateFlow(0)
+    val sourcesVersion: StateFlow<Int> = _sourcesVersion.asStateFlow()
+
     private var loadJob: Job? = null
     private var analyzeJob: Job? = null
+    private var exportJob: Job? = null
 
     init {
         loadCacheThenMaybeRefresh()
@@ -202,6 +243,84 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    // ---- Shorts maker ----
+
+    fun sourceFor(videoId: String?): Uri? = videoId?.let { sources.get(it) }
+
+    /** Remembers a picked file for a video (keeps read access across restarts). */
+    fun rememberSource(videoId: String?, uri: Uri) {
+        MediaFiles.keepAccess(getApplication<Application>(), uri)
+        if (videoId != null) sources.put(videoId, uri)
+        _editor.update { e -> if (e != null && e.videoId == videoId) e.copy(pickedUri = uri) else e }
+        _sourcesVersion.update { it + 1 }
+    }
+
+    fun forgetSource(videoId: String?) {
+        if (videoId != null) sources.forget(videoId)
+        _editor.update { e -> if (e != null && e.videoId == videoId) e.copy(pickedUri = null) else e }
+        _sourcesVersion.update { it + 1 }
+    }
+
+    fun openEditor(request: EditorRequest) {
+        _editor.value = request
+    }
+
+    fun closeEditor() {
+        _editor.value = null
+    }
+
+    /** Exports one or more Shorts in a row, saving each to Movies/YT Shorts Maker. */
+    fun exportShorts(jobs: List<ExportJob>) {
+        if (jobs.isEmpty() || exportJob?.isActive == true) return
+        exportJob = viewModelScope.launch {
+            _export.value = ExportState(active = true, running = true, index = 0, total = jobs.size)
+            val ctx = getApplication<Application>()
+            val saved = ArrayList<SavedShort>()
+            try {
+                for ((i, job) in jobs.withIndex()) {
+                    _export.update { it.copy(index = i, progress = 0f) }
+                    val info = withContext(Dispatchers.IO) { MediaFiles.probe(ctx, job.source) }
+                    val end = job.endMs.coerceAtMost(info.durationMs)
+                    val start = job.startMs.coerceIn(0L, (end - 500L).coerceAtLeast(0L))
+                    if (end - start < 500L) throw ExportFailed("That clip is outside the picked file. Check the file and the range.")
+                    val file = exporter.export(job.copy(startMs = start, endMs = end), info) { p ->
+                        _export.update { it.copy(progress = p) }
+                    }
+                    try {
+                        val uri = withContext(Dispatchers.IO) { MediaFiles.saveToGallery(ctx, file, job.displayName) }
+                        saved.add(SavedShort(uri, job.displayName))
+                        _export.update { it.copy(saved = saved.toList(), progress = 1f) }
+                    } finally {
+                        withContext(Dispatchers.IO) { file.delete() }
+                    }
+                }
+                _export.update { it.copy(running = false, index = jobs.size) }
+            } catch (e: CancellationException) {
+                _export.update { it.copy(running = false, error = if (saved.isEmpty()) "Export cancelled." else "Export stopped.") }
+                throw e
+            } catch (e: Exception) {
+                _export.update { it.copy(running = false, error = e.message ?: "Export failed.") }
+            }
+        }
+    }
+
+    fun cancelExport() {
+        exporter.cancel()
+        exportJob?.cancel()
+        exportJob = null
+        _export.update { it.copy(running = false, error = it.error ?: "Export cancelled.") }
+    }
+
+    fun dismissExport() {
+        if (_export.value.running) return
+        _export.value = ExportState()
+    }
+
+    override fun onCleared() {
+        exporter.cancel()
+        super.onCleared()
+    }
+
     companion object {
         private const val STALE_AFTER_MS = 24L * 60 * 60 * 1000
         private const val MAX_PAGES_PER_TAB = 400
@@ -209,7 +328,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         fun friendlyError(e: Throwable): String = when (e) {
             is UnknownHostException, is ConnectException ->
                 "Can't reach YouTube. Check your connection. On GrapheneOS, make sure the " +
-                    "Network permission is allowed for Shorts Finder."
+                    "Network permission is allowed for YT Shorts Maker."
             is SocketTimeoutException -> "YouTube took too long to answer."
             is SSLException -> "Secure connection to YouTube failed."
             is HttpException -> when (e.code) {

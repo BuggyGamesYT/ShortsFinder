@@ -5,7 +5,7 @@ plugins {
 }
 
 // Base version. CI overrides versionName on v* tags and sets versionCode from the run number.
-val baseVersionName = "1.0.0"
+val baseVersionName = "0.2.0"
 
 // Release signing comes from environment variables set by the CI workflow.
 // Without them the release build falls back to the standard Android debug key.
@@ -95,6 +95,13 @@ dependencies {
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-core")
+
+    val media3 = "1.4.1"
+    implementation("androidx.media3:media3-transformer:$media3")
+    implementation("androidx.media3:media3-effect:$media3")
+    implementation("androidx.media3:media3-common:$media3")
+    implementation("androidx.media3:media3-exoplayer:$media3")
+    implementation("androidx.media3:media3-ui:$media3")
 
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")

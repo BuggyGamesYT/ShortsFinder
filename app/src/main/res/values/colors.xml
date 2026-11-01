@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="sf_background">#FF0F1113</color>
+    <color name="window_background">#FFF7F9F2</color>
     <color name="ic_launcher_background">#FF14261A</color>
     <color name="ic_launcher_accent">#FF8BE36B</color>
+    <color name="ic_launcher_spark">#FFFFC857</color>
 </resources>

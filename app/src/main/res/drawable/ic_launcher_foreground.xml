@@ -1,17 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Vertical "short" frame with a play mark and a small spark: Shorts Finder icon. -->
+<!-- YT Shorts Maker: a vertical "short" frame with a play mark, and scissors cutting a clip. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- 9:16 frame -->
     <path
         android:fillColor="@color/ic_launcher_accent"
-        android:pathData="M42,30 L66,30 A6,6 0 0 1 72,36 L72,72 A6,6 0 0 1 66,78 L42,78 A6,6 0 0 1 36,72 L36,36 A6,6 0 0 1 42,30 Z" />
+        android:pathData="M37,28 L59,28 A7,7 0 0 1 66,35 L66,73 A7,7 0 0 1 59,80 L37,80 A7,7 0 0 1 30,73 L30,35 A7,7 0 0 1 37,28 Z" />
+    <!-- play mark -->
     <path
         android:fillColor="@color/ic_launcher_background"
-        android:pathData="M48,44 L62,54 L48,64 Z" />
+        android:pathData="M42,43 L56,54 L42,65 Z" />
+    <!-- scissors blades -->
     <path
-        android:fillColor="#FFFFC857"
-        android:pathData="M76,26 L78,32 L84,34 L78,36 L76,42 L74,36 L68,34 L74,32 Z" />
+        android:strokeColor="@color/ic_launcher_spark"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round"
+        android:pathData="M63,68 L78,47 M75,68 L62,49" />
+    <!-- scissors handles -->
+    <path
+        android:strokeColor="@color/ic_launcher_spark"
+        android:strokeWidth="3.2"
+        android:fillColor="#00000000"
+        android:pathData="M61,72 m-4.5,0 a4.5,4.5 0 1,0 9,0 a4.5,4.5 0 1,0 -9,0 M77,72 m-4.5,0 a4.5,4.5 0 1,0 9,0 a4.5,4.5 0 1,0 -9,0" />
 </vector>

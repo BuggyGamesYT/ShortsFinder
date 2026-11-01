@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Themed-icon layer: one color, the play mark is a cut-out. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M37,28 L59,28 A7,7 0 0 1 66,35 L66,73 A7,7 0 0 1 59,80 L37,80 A7,7 0 0 1 30,73 L30,35 A7,7 0 0 1 37,28 Z M42,43 L42,65 L56,54 Z" />
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round"
+        android:pathData="M63,68 L78,47 M75,68 L62,49" />
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="3.2"
+        android:fillColor="#00000000"
+        android:pathData="M61,72 m-4.5,0 a4.5,4.5 0 1,0 9,0 a4.5,4.5 0 1,0 -9,0 M77,72 m-4.5,0 a4.5,4.5 0 1,0 9,0 a4.5,4.5 0 1,0 -9,0" />
+</vector>

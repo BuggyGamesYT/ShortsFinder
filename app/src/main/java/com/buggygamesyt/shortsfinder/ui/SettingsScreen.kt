@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -64,7 +66,7 @@ fun SettingsScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
+                    containerColor = MaterialTheme.colorScheme.surface,
                 ),
             )
         },
@@ -84,6 +86,7 @@ fun SettingsScreen(
                 label = { Text("Channel handle or URL") },
                 placeholder = { Text(AppSettings.DEFAULT_HANDLE) },
                 singleLine = true,
+                shape = RoundedCornerShape(20.dp),
                 modifier = Modifier.fillMaxWidth(),
             )
             Row(
@@ -141,7 +144,7 @@ fun SettingsScreen(
                             commentPages = commentPages.roundToInt(),
                         )
                     )
-                }) { Text("Save") }
+                }, shape = CircleShape) { Text("Save") }
                 OutlinedButton(onClick = {
                     val d = AppSettings()
                     handle = d.handle
@@ -152,13 +155,14 @@ fun SettingsScreen(
                     clipLength = d.clipLength.toFloat()
                     lead = d.leadSeconds.toFloat()
                     commentPages = d.commentPages.toFloat()
-                }) { Text("Defaults") }
+                }, shape = CircleShape) { Text("Defaults") }
             }
 
             Spacer(Modifier.height(24.dp))
             Text(
-                "Shorts Finder ${BuildConfig.VERSION_NAME} · by Buggy Games YT\n" +
-                    "Uses YouTube's public web pages. No account or API key needed.",
+                "YT Shorts Maker ${BuildConfig.VERSION_NAME} · by Buggy Games YT\n" +
+                    "Finds moments with YouTube's public web pages (no account or API key). " +
+                    "Shorts are cut on your phone from your own video files and saved to Movies/YT Shorts Maker.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

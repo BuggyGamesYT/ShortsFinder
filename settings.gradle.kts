@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "ShortsFinder"
+rootProject.name = "YTShortsMaker"
 include(":app")

@@ -1,7 +1,7 @@
 package com.buggygamesyt.shortsfinder.ui
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,27 +16,33 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,6 +52,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -64,9 +71,13 @@ fun VideoListScreen(
     onDismissError: () -> Unit,
     onOpen: (Video) -> Unit,
     onSettings: () -> Unit,
+    onMakeFromFile: () -> Unit,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     var filter by rememberSaveable { mutableStateOf(KindFilter.ALL) }
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val listState = rememberLazyListState()
+    val fabExpanded by remember { derivedStateOf { listState.firstVisibleItemIndex < 3 } }
 
     val filtered = remember(state.videos, query, filter) {
         val words = query.trim().lowercase().split(Regex("\\s+")).filter { it.isNotEmpty() }
@@ -83,15 +94,17 @@ fun VideoListScreen(
     val hasShorts = remember(state.videos) { state.videos.any { it.isShort } }
 
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            TopAppBar(
+            LargeTopAppBar(
                 title = {
                     Column {
-                        Text("Shorts Finder", style = MaterialTheme.typography.titleLarge)
+                        Text("YT Shorts Maker", maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(
                             settings.handle,
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
                         )
                     }
                 },
@@ -103,103 +116,136 @@ fun VideoListScreen(
                         Icon(Icons.Filled.Settings, contentDescription = "Settings")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
+                scrollBehavior = scrollBehavior,
+                colors = TopAppBarDefaults.largeTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
                 ),
             )
         },
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                onClick = onMakeFromFile,
+                expanded = fabExpanded,
+                icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                text = { Text("Make from a file") },
+                shape = CircleShape,
+            )
+        },
     ) { padding ->
-        Column(
-            Modifier
+        PullToRefreshBox(
+            isRefreshing = state.loading,
+            onRefresh = onRefresh,
+            modifier = Modifier
                 .padding(padding)
-                .fillMaxSize()
+                .fillMaxSize(),
         ) {
-            OutlinedTextField(
-                value = query,
-                onValueChange = { query = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 4.dp),
-                singleLine = true,
-                placeholder = { Text("Search ${state.videos.size} videos") },
-                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-                trailingIcon = {
-                    if (query.isNotEmpty()) {
-                        IconButton(onClick = { query = "" }) {
-                            Icon(Icons.Filled.Clear, contentDescription = "Clear search")
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 96.dp),
+            ) {
+                item(key = "search") {
+                    TextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 6.dp),
+                        singleLine = true,
+                        shape = CircleShape,
+                        placeholder = { Text("Search ${state.videos.size} videos") },
+                        leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                        trailingIcon = {
+                            if (query.isNotEmpty()) {
+                                IconButton(onClick = { query = "" }) {
+                                    Icon(Icons.Filled.Clear, contentDescription = "Clear search")
+                                }
+                            }
+                        },
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                            disabledIndicatorColor = Color.Transparent,
+                        ),
+                    )
+                }
+
+                if (hasShorts) {
+                    item(key = "filters") {
+                        Row(
+                            Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            for (k in KindFilter.entries) {
+                                FilterChip(
+                                    selected = filter == k,
+                                    onClick = { filter = k },
+                                    label = { Text(k.label) },
+                                    shape = CircleShape,
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    ),
+                                )
+                            }
                         }
                     }
-                },
-            )
+                }
 
-            if (hasShorts) {
-                Row(
-                    Modifier.padding(horizontal = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    for (k in KindFilter.entries) {
-                        FilterChip(
-                            selected = filter == k,
-                            onClick = { filter = k },
-                            label = { Text(k.label) },
-                        )
+                item(key = "status") {
+                    Column(Modifier.fillMaxWidth()) {
+                        AnimatedVisibility(visible = state.loading) {
+                            LinearProgressIndicator(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 20.dp, vertical = 6.dp)
+                                    .clip(CircleShape)
+                            )
+                        }
+                        val statusLine = state.progress
+                            ?: if (state.lastUpdated > 0L) {
+                                "${filtered.size} shown · updated ${formatUpdated(state.lastUpdated)}"
+                            } else {
+                                null
+                            }
+                        if (statusLine != null) {
+                            Text(
+                                statusLine,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
+                            )
+                        }
+                        val error = state.error
+                        AnimatedVisibility(visible = error != null) {
+                            ErrorBanner(message = error ?: "", onRetry = onRefresh, onDismiss = onDismissError)
+                        }
                     }
                 }
-            }
 
-            if (state.loading) {
-                LinearProgressIndicator(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 4.dp)
-                )
-            }
-            val statusLine = state.progress
-                ?: if (state.lastUpdated > 0L) {
-                    "${filtered.size} shown · updated ${formatUpdated(state.lastUpdated)}"
-                } else {
-                    null
-                }
-            if (statusLine != null) {
-                Text(
-                    statusLine,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
-                )
-            }
-
-            val error = state.error
-            if (error != null) {
-                ErrorBanner(message = error, onRetry = onRefresh, onDismiss = onDismissError)
-            }
-
-            PullToRefreshBox(
-                isRefreshing = state.loading,
-                onRefresh = onRefresh,
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 24.dp),
-                ) {
-                    if (filtered.isEmpty()) {
+                if (filtered.isEmpty()) {
+                    if (state.videos.isEmpty() && (state.loading || state.error == null)) {
+                        items(6, key = { "ph$it" }) { VideoRowPlaceholder() }
+                    } else {
                         item(key = "empty") {
-                            val msg = when {
-                                state.loading && state.videos.isEmpty() -> "Loading the channel…"
-                                state.videos.isEmpty() -> "No videos yet. Pull down to load the channel."
-                                else -> "Nothing matches your search."
-                            }
                             Text(
-                                msg,
+                                if (state.videos.isEmpty()) "No videos yet. Pull down to load the channel."
+                                else "Nothing matches your search.",
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(24.dp),
                             )
                         }
                     }
-                    items(filtered, key = { it.id }) { video ->
-                        VideoRow(video = video, onClick = { onOpen(video) })
-                    }
+                }
+                items(filtered, key = { it.id }) { video ->
+                    VideoCard(
+                        video = video,
+                        onClick = { onOpen(video) },
+                        modifier = Modifier.animateItem(),
+                    )
                 }
             }
         }
@@ -207,79 +253,75 @@ fun VideoListScreen(
 }
 
 @Composable
-fun ErrorBanner(message: String, onRetry: () -> Unit, onDismiss: (() -> Unit)? = null) {
-    Surface(
-        color = MaterialTheme.colorScheme.error.copy(alpha = 0.15f),
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        shape = RoundedCornerShape(12.dp),
-        modifier = Modifier
+private fun VideoCard(video: Video, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    ElevatedCard(
+        onClick = onClick,
+        shape = MaterialTheme.shapes.large,
+        modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 6.dp),
+            .padding(horizontal = 16.dp, vertical = 6.dp),
     ) {
-        Column(Modifier.padding(12.dp)) {
-            Text(message, style = MaterialTheme.typography.bodyMedium)
-            Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
-                if (onDismiss != null) {
-                    TextButton(onClick = onDismiss) { Text("Dismiss") }
-                }
-                TextButton(onClick = onRetry) { Text("Retry") }
-            }
-        }
-    }
-}
-
-@Composable
-private fun VideoRow(video: Video, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            Modifier
-                .width(150.dp)
-                .aspectRatio(16f / 9f)
-                .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
+        Row(
+            modifier = Modifier.padding(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            AsyncImage(
-                model = video.thumbnailUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
-            val badge = video.length ?: if (video.isShort) "SHORT" else null
-            if (badge != null) {
-                Text(
-                    badge,
-                    color = Color.White,
-                    style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(4.dp)
-                        .background(Color.Black.copy(alpha = 0.75f), RoundedCornerShape(4.dp))
-                        .padding(horizontal = 4.dp, vertical = 1.dp),
+            Box(
+                Modifier
+                    .width(140.dp)
+                    .aspectRatio(16f / 9f)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                AsyncImage(
+                    model = video.thumbnailUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
                 )
+                val badge = video.length ?: if (video.isShort) "SHORT" else null
+                if (badge != null) {
+                    Text(
+                        badge,
+                        color = Color.White,
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(6.dp)
+                            .background(Color.Black.copy(alpha = 0.7f), CircleShape)
+                            .padding(horizontal = 7.dp, vertical = 2.dp),
+                    )
+                }
             }
-        }
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Text(
-                video.title,
-                style = MaterialTheme.typography.bodyLarge,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.height(2.dp))
-            val meta = listOfNotNull(video.views, video.published).joinToString(" · ")
-            if (meta.isNotEmpty()) {
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
                 Text(
-                    meta,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    video.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                 )
+                Spacer(Modifier.height(4.dp))
+                val meta = listOfNotNull(video.views, video.published).joinToString(" · ")
+                if (meta.isNotEmpty()) {
+                    Text(
+                        meta,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                if (video.isShort) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "Short",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                        modifier = Modifier
+                            .background(MaterialTheme.colorScheme.tertiaryContainer, CircleShape)
+                            .padding(horizontal = 8.dp, vertical = 2.dp),
+                    )
+                }
             }
         }
     }
