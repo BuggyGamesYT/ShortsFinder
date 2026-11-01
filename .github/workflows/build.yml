@@ -31,27 +31,42 @@ jobs:
       # Validates gradle-wrapper.jar against Gradle's published checksums and caches dependencies.
       - uses: gradle/actions/setup-gradle@v4
 
-      # Keeps the fallback debug key the same between runs, so fallback builds can update each other.
+      # Keeps the fallback key the same between runs, so fallback builds can update each other.
       # (GitHub drops caches unused for 7 days; after that a new fallback key is made.)
-      # The cache key and the SHORTSFINDER_* secret names stay as they were so updates keep the same signing key.
-      - name: Restore fallback debug key
+      # The SHORTSFINDER_* secret names stay as they were so updates keep the same signing key.
+      - name: Restore fallback key
         uses: actions/cache@v4
         with:
-          path: ~/.android/debug.keystore
-          key: shortsfinder-debug-keystore-v1
+          path: ~/.fallback-signing/fallback.keystore
+          key: ytshortsmaker-fallback-keystore-v1
 
       - name: Prepare signing key
         env:
           KEYSTORE_B64: ${{ secrets.SHORTSFINDER_KEYSTORE_B64 }}
           KEY_PASS: ${{ secrets.SHORTSFINDER_KEY_PASS }}
+          KEY_ALIAS: ${{ secrets.SHORTSFINDER_KEY_ALIAS }}
         run: |
+          set -e
           if [ -n "$KEYSTORE_B64" ] && [ -n "$KEY_PASS" ]; then
             printf '%s' "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/shortsfinder-release.keystore"
             echo "SHORTSFINDER_KEYSTORE_FILE=$RUNNER_TEMP/shortsfinder-release.keystore" >> "$GITHUB_ENV"
+            echo "SHORTSFINDER_KEY_PASS=$KEY_PASS" >> "$GITHUB_ENV"
+            echo "SHORTSFINDER_KEY_ALIAS=${KEY_ALIAS:-shortsfinder}" >> "$GITHUB_ENV"
             echo "SIGNED_WITH=release key" >> "$GITHUB_ENV"
           else
-            echo "::warning::SHORTSFINDER_KEYSTORE_B64 / SHORTSFINDER_KEY_PASS secrets are not set: signing with the fallback debug key. See README > Signing."
-            echo "SIGNED_WITH=fallback debug key" >> "$GITHUB_ENV"
+            echo "::warning::SHORTSFINDER_KEYSTORE_B64 / SHORTSFINDER_KEY_PASS secrets are not set: signing with the cached fallback key. See README > Signing."
+            FB="$HOME/.fallback-signing/fallback.keystore"
+            if [ ! -f "$FB" ]; then
+              mkdir -p "$(dirname "$FB")"
+              keytool -genkeypair -keystore "$FB" -storetype PKCS12 -alias fallback \
+                -storepass android -keypass android -keyalg RSA -keysize 2048 -validity 10000 \
+                -dname "CN=Buggy Games YT fallback, O=Buggy Games YT"
+              echo "Made a new fallback key."
+            fi
+            echo "SHORTSFINDER_KEYSTORE_FILE=$FB" >> "$GITHUB_ENV"
+            echo "SHORTSFINDER_KEY_PASS=android" >> "$GITHUB_ENV"
+            echo "SHORTSFINDER_KEY_ALIAS=fallback" >> "$GITHUB_ENV"
+            echo "SIGNED_WITH=fallback key" >> "$GITHUB_ENV"
           fi
 
       - name: Work out version
@@ -67,8 +82,6 @@ jobs:
 
       - name: Build release APK
         env:
-          SHORTSFINDER_KEY_PASS: ${{ secrets.SHORTSFINDER_KEY_PASS }}
-          SHORTSFINDER_KEY_ALIAS: ${{ secrets.SHORTSFINDER_KEY_ALIAS }}
           VERSION_CODE: ${{ github.run_number }}
           VERSION_NAME: ${{ env.VER }}
         run: |

@@ -83,7 +83,7 @@ Then in the GitHub repo go to **Settings → Secrets and variables → Actions**
 
 Never commit the keystore; `.gitignore` already excludes `*.keystore` and `*.jks`.
 
-**Fallback: debug key.** Without those secrets the workflow still produces an installable APK, signed with the standard Android debug key. The workflow caches that key between runs so fallback builds can update each other, but GitHub deletes caches that go unused for 7 days. When that happens a new debug key is made and the next build will need an uninstall first. Switching from the fallback key to your release key also needs one uninstall. The release notes say which key signed each build.
+**Fallback key.** Without those secrets the workflow makes its own fallback key once and keeps it in the Actions cache, so fallback builds can update each other. GitHub deletes caches that go unused for 7 days; when that happens a new fallback key is made and the next build needs an uninstall first. Switching from the fallback key to your release key also needs one uninstall. The release notes say which key signed each build.
 
 ## Project layout
 
